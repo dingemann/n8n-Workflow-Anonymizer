@@ -10,6 +10,7 @@ A privacy-first, single-page web application to automatically find and replace s
 
 ---
 
+<img width="981" height="1192" alt="image" src="https://github.com/user-attachments/assets/781a6664-72c2-443c-8373-5ac856259d5c" />
 
 
 ## 🤔 Why This Tool?
