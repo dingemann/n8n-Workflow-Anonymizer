@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>n8n Workflow Anonymizer</title>
+    <style>
+        :root {
+            /* Light Mode */
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg: #f9fafb;
+            --bg-secondary: #ffffff;
+            --text: #1f2937;
+            --text-secondary: #6b7280;
+            --border: #e5e7eb;
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --dropzone-bg-pattern: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='12' ry='12' stroke='%23E5E7EB' stroke-width='2' stroke-dasharray='8%2c 8' stroke-dashoffset='0' stroke-linecap='square'/%3e%3c/svg%3e");
+        }
+
+        [data-theme="dark"] {
+            /* Dark Mode */
+            --primary: #818cf8;
+            --primary-hover: #6366f1;
+            --success: #34d399;
+            --warning: #fbbf24;
+            --danger: #f87171;
+            --bg: #111827;
+            --bg-secondary: #1f2937;
+            --text: #f9fafb;
+            --text-secondary: #9ca3af;
+            --border: #374151;
+            --shadow: 0 4px 6px -1px rgb(255 255 255 / 0.05), 0 2px 4px -2px rgb(255 255 255 / 0.05);
+            --dropzone-bg-pattern: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='12' ry='12' stroke='%23374151' stroke-width='2' stroke-dasharray='8%2c 8' stroke-dashoffset='0' stroke-linecap='square'/%3e%3c/svg%3e");
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            background-color: var(--bg);
+            color: var(--text);
+            transition: background-color 0.3s, color 0.3s;
+            line-height: 1.6;
+            padding: 2rem 1rem;
+        }
+
+        main {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 1rem;
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+        }
+        
+        h1 svg {
+            display: inline-block;
+            vertical-align: -0.2em;
+            margin-right: 0.5rem;
+            color: var(--primary);
+        }
+
+        h2, h3 {
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .card {
+            background-color: var(--bg-secondary);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+
+        #drop-zone {
+            background-color: var(--bg);
+            border-radius: 0.75rem;
+            padding: 3rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background-image: var(--dropzone-bg-pattern);
+        }
+
+        #drop-zone.dragover {
+            transform: scale(1.02);
+            box-shadow: 0 0 0 3px var(--primary);
+        }
+
+        #drop-zone .drop-zone-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            pointer-events: none; /* Wichtig für Droppability */
+        }
+        
+        #drop-zone .drop-zone-icon {
+            width: 48px;
+            height: 48px;
+            color: var(--primary);
+        }
+
+        #drop-zone p {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        .privacy-notice {
+            font-size: 0.875rem;
+            text-align: center;
+            margin-top: 1.5rem;
+            color: var(--text-secondary);
+        }
+        
+        .privacy-notice svg {
+            display: inline-block;
+            vertical-align: -0.15em;
+            color: var(--warning);
+            margin-right: 0.25rem;
+        }
+
+        #results-section {
+            display: none;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-item {
+            background-color: var(--bg);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .option-item {
+            display: flex;
+            align-items: center;
+            background: var(--bg);
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border);
+        }
+        
+        .option-item input[type="checkbox"] {
+            width: 1.2em;
+            height: 1.2em;
+            margin-right: 0.75rem;
+            accent-color: var(--primary);
+        }
+
+        .table-container {
+            overflow-x: auto;
+            max-height: 400px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        thead {
+            position: sticky;
+            top: 0;
+            background-color: var(--bg-secondary);
+        }
+
+        th {
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        td .original-value {
+            font-family: monospace;
+            background: rgba(239, 68, 68, 0.1);
+            padding: 0.1em 0.3em;
+            border-radius: 4px;
+            color: var(--danger);
+        }
+
+        td .placeholder {
+            font-family: monospace;
+            background: rgba(16, 185, 129, 0.1);
+            padding: 0.1em 0.3em;
+            border-radius: 4px;
+            color: var(--success);
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-top: 1.5rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.25rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        .btn:active {
+            transform: translateY(1px);
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn-secondary {
+            background-color: var(--bg-secondary);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--bg);
+        }
+
+        .theme-toggle {
+            background: none;
+            border: none;
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+        }
+        
+        .theme-toggle:hover {
+            color: var(--text);
+        }
+
+        .hidden { display: none; }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--success);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.5s, bottom 0.5s;
+        }
+
+        .toast.show {
+            opacity: 1;
+            bottom: 30px;
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <header>
+            <h1>
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                n8n Workflow Anonymizer
+            </h1>
+            <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode">
+                <svg id="theme-icon-light" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                <svg id="theme-icon-dark" class="hidden" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+            </button>
+        </header>
+
+        <section id="upload-section">
+            <div class="card">
+                <label for="file-input" id="drop-zone">
+                    <div class="drop-zone-content">
+                        <svg class="drop-zone-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+                        <p>n8n Workflow JSON-Datei hierher ziehen</p>
+                        <p style="font-size: 0.9em;">oder zum Hochladen klicken</p>
+                    </div>
+                </label>
+                <input type="file" id="file-input" accept=".json">
+            </div>
+            <p class="privacy-notice">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                <strong>Wichtig:</strong> Diese App läuft komplett lokal in deinem Browser.
+                Keine Daten werden hochgeladen oder gespeichert.
+            </p>
+        </section>
+
+        <section id="results-section">
+            <!-- Content will be generated by JS -->
+        </section>
+        
+        <div id="toast" class="toast"></div>
+
+    </main>
+    
+    <template id="results-template">
+        <div class="card">
+            <h3>📊 Analyse-Ergebnis</h3>
+            <div id="stats-summary" class="stats-grid"></div>
+        </div>
+        <div class="card">
+            <h3>⚙️ Anonymisierungs-Optionen</h3>
+            <p style="color: var(--text-secondary); font-size: 0.9em; margin-bottom: 1rem;">Wähle aus, welche Daten ersetzt werden sollen. Die Vorschau wird live aktualisiert.</p>
+            <div id="anonymization-options" class="options-grid"></div>
+        </div>
+        <div class="card">
+            <h3>📋 Mapping-Vorschau</h3>
+            <div class="table-container">
+                <table id="mapping-table">
+                    <thead>
+                        <tr>
+                            <th>Node Name</th>
+                            <th>Feld-Pfad</th>
+                            <th>Original (gekürzt)</th>
+                            <th>Neuer Platzhalter</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="actions">
+            <button id="download-json-btn" class="btn btn-primary">Download Anonymized JSON</button>
+            <button id="download-report-btn" class="btn btn-secondary">Download Mapping Report (MD)</button>
+            <button id="copy-mapping-btn" class="btn btn-secondary">Copy Mapping to Clipboard</button>
+            <button id="reset-btn" class="btn btn-secondary">Neu starten</button>
+        </div>
+    </template>
+
+
+    <script>
+        // ... (rest of the script is identical to the previous improved version)
+        document.addEventListener('DOMContentLoaded', () => {
+            const state = {
+                originalWorkflow: null,
+                originalFilename: 'workflow.json',
+                replacements: [],
+                anonymizer: null,
+                categories: {
+                    credentialIds: 'Credential IDs',
+                    apiKeys: 'API Keys & Tokens',
+                    documentIds: 'Document IDs',
+                    instanceIds: 'Instance & Workflow IDs',
+                    emails: 'E-Mail-Adressen'
+                }
+            };
+
+            // DOM Elements
+            const dropZone = document.getElementById('drop-zone');
+            const fileInput = document.getElementById('file-input');
+            const uploadSection = document.getElementById('upload-section');
+            const resultsSection = document.getElementById('results-section');
+            const resultsTemplate = document.getElementById('results-template');
+            const themeToggle = document.getElementById('theme-toggle');
+            const themeIconLight = document.getElementById('theme-icon-light');
+            const themeIconDark = document.getElementById('theme-icon-dark');
+            const toast = document.getElementById('toast');
+
+            // --- Theme Manager ---
+            const applyTheme = (theme) => {
+                document.documentElement.setAttribute('data-theme', theme);
+                if (theme === 'dark') {
+                    themeIconLight.classList.add('hidden');
+                    themeIconDark.classList.remove('hidden');
+                } else {
+                    themeIconLight.classList.remove('hidden');
+                    themeIconDark.classList.add('hidden');
+                }
+            };
+            const preferredTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            applyTheme(preferredTheme);
+            themeToggle.addEventListener('click', () => {
+                const currentTheme = document.documentElement.getAttribute('data-theme');
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                localStorage.setItem('theme', newTheme);
+                applyTheme(newTheme);
+            });
+
+            // --- Drag & Drop ---
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+            });
+
+            dropZone.addEventListener('drop', handleDrop, false);
+            fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+            function handleDrop(e) {
+                let dt = e.dataTransfer;
+                let files = dt.files;
+                handleFiles(files);
+            }
+
+            // --- File Handling ---
+            function handleFiles(files) {
+                if (files.length > 1) {
+                    alert('Bitte nur eine Datei hochladen.');
+                    return;
+                }
+                const file = files[0];
+                state.originalFilename = file.name;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const content = JSON.parse(e.target.result);
+                        if (!content.name || !content.nodes || !content.connections) {
+                            throw new Error('Dies scheint keine gültige n8n Workflow JSON-Datei zu sein.');
+                        }
+                        state.originalWorkflow = content;
+                        initializeResultsView();
+                    } catch (error) {
+                        alert(`Fehler beim Verarbeiten der Datei: ${error.message}`);
+                        resetApp();
+                    }
+                };
+                reader.readAsText(file);
+            }
+
+            // --- Core Logic ---
+            class WorkflowAnonymizer {
+                constructor(workflowJSON) {
+                    this.originalWorkflow = JSON.parse(JSON.stringify(workflowJSON));
+                    this.replacements = [];
+                }
+
+                findReplacements() {
+                    this._findCredentials();
+                    this._findApiKeys();
+                    this._findGoogleSheetIds();
+                    this._findMetaInfo();
+                    this._findEmails();
+                    return this.replacements;
+                }
+                
+                getAnonymizedWorkflow(enabledCategories) {
+                    const anonymized = JSON.parse(JSON.stringify(this.originalWorkflow));
+                    const activeReplacements = this.replacements.filter(r => enabledCategories.includes(r.category));
+                    
+                    activeReplacements.forEach(rep => {
+                        const pathParts = rep.path.split('.');
+                        let current = anonymized;
+                        for (let i = 0; i < pathParts.length - 1; i++) {
+                            const part = pathParts[i];
+                            const arrayMatch = part.match(/(\w+)\[(\d+)\]/);
+                            if (arrayMatch) {
+                                current = current?.[arrayMatch[1]]?.[arrayMatch[2]];
+                            } else {
+                                current = current?.[part];
+                            }
+                            if (current === undefined) break;
+                        }
+                        if (current !== undefined) {
+                           let lastPart = pathParts[pathParts.length - 1];
+                           const arrayMatch = lastPart.match(/(\w+)\[(\d+)\]/);
+                           if(arrayMatch){
+                               current[arrayMatch[1]][arrayMatch[2]] = rep.placeholder;
+                           } else {
+                               current[lastPart] = rep.placeholder;
+                           }
+                        }
+                    });
+                    
+                    return anonymized;
+                }
+                
+                addReplacement(data) {
+                    if (!this.replacements.some(r => r.path === data.path)) {
+                        this.replacements.push(data);
+                    }
+                }
+                
+                _generatePlaceholder(type, suffix) {
+                    const readable = type
+                        .replace(/OAuth2Api|Api|api/gi, '')
+                        .replace(/([A-Z])/g, '_$1')
+                        .toUpperCase()
+                        .replace(/^_/, '');
+                    
+                    if (suffix === 'ID') return `YOUR_${readable}_CREDENTIAL_ID`;
+                    return `Your ${this._toTitleCase(readable.replace(/_/g, ' '))} Credential`;
+                }
+
+                _toTitleCase(str) {
+                    return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+                }
+
+                // ... FINDERS (identical to previous robust version)
+                _findCredentials(){this.originalWorkflow.nodes.forEach((e,t)=>{if(e.credentials)for(const o in e.credentials){const s=e.credentials[o];s&&s.id&&this.addReplacement({nodeName:e.name,path:`nodes[${t}].credentials.${o}.id`,originalValue:s.id,placeholder:this._generatePlaceholder(o,"ID"),category:"credentialIds"}),s&&s.name&&this.addReplacement({nodeName:e.name,path:`nodes[${t}].credentials.${o}.name`,originalValue:s.name,placeholder:this._generatePlaceholder(o,"NAME"),category:"credentialIds"})}})}
+                _findApiKeys(){const e=["key","apikey","token","secret","x-api-key","authorization"];this.originalWorkflow.nodes.forEach((t,o)=>{if(t.parameters){Object.keys(t.parameters).forEach(s=>{const a=t.parameters[s];"object"==typeof a&&null!==a&&a.value&&"string"==typeof a.value&&a.value.length>20&&e.some((e=>s.toLowerCase().includes(e)))&&this.addReplacement({nodeName:t.name,path:`nodes[${o}].parameters.${s}.value`,originalValue:a.value,placeholder:"YOUR_API_KEY",category:"apiKeys"})}),["queryParameters","headerParameters","bodyParameters"].forEach((s=>{const a=t.parameters?.[s]?.parameters;Array.isArray(a)&&a.forEach((a,r)=>{const n=a.name?.toLowerCase()||"";e.includes(n)&&a.value&&"string"==typeof a.value&&a.value.length>20&&this.addReplacement({nodeName:t.name,path:`nodes[${o}].parameters.${s}.parameters[${r}].value`,originalValue:a.value,placeholder:"authorization"===n?"Bearer YOUR_BEARER_TOKEN":"YOUR_API_KEY",category:"apiKeys"})})}));const s=t.parameters?.queryParameters?.parameters;Array.isArray(s)&&s.forEach((e,s)=>{e.name?.toLowerCase()==="cx"&&e.value&&this.addReplacement({nodeName:t.name,path:`nodes[${o}].parameters.queryParameters.parameters[${s}].value`,originalValue:e.value,placeholder:"YOUR_CUSTOM_SEARCH_ENGINE_ID",category:"apiKeys"})})}})}
+                _findGoogleSheetIds(){const e=/\/d\/([a-zA-Z0-9-_]{44})/;this.originalWorkflow.nodes.forEach((t,o)=>{const s=t.parameters?.documentId;if(s){let a=!1;if(s.cachedResultUrl&&"string"==typeof s.cachedResultUrl){const r=s.cachedResultUrl.match(e);r&&r[1]&&(a=!0,this.addReplacement({nodeName:t.name,path:`nodes[${o}].parameters.documentId.value`,originalValue:r[1],placeholder:"",category:"documentIds"}))}!a&&s.value&&"string"==typeof s.value&&s.value.length>40&&(a=!0,this.addReplacement({nodeName:t.name,path:`nodes[${o}].parameters.documentId.value`,originalValue:s.value,placeholder:"",category:"documentIds"})),a&&(s.cachedResultName&&this.addReplacement({nodeName:t.name,path:`nodes[${o}].parameters.documentId.cachedResultName`,originalValue:s.cachedResultName,placeholder:"",category:"documentIds"}),s.cachedResultUrl&&this.addReplacement({nodeName:t.name,path:`nodes[${o}].parameters.documentId.cachedResultUrl`,originalValue:s.cachedResultUrl,placeholder:"",category:"documentIds"}))}})}
+                _findMetaInfo(){this.originalWorkflow.meta?.instanceId&&this.addReplacement({nodeName:"Workflow Meta",path:"meta.instanceId",originalValue:this.originalWorkflow.meta.instanceId,placeholder:"YOUR_N8N_INSTANCE_ID",category:"instanceIds"}),this.originalWorkflow.id&&this.addReplacement({nodeName:"Workflow Meta",path:"id",originalValue:this.originalWorkflow.id,placeholder:"YOUR_WORKFLOW_ID",category:"instanceIds"}),this.originalWorkflow.settings?.errorWorkflow&&this.addReplacement({nodeName:"Workflow Settings",path:"settings.errorWorkflow",originalValue:this.originalWorkflow.settings.errorWorkflow,placeholder:"",category:"instanceIds"})}
+                _findEmails(){const e=/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/gi,t=(o,s="")=>{for(const a in o)if(o.hasOwnProperty(a)){const r=s?`${s}.${a}`:a;"string"==typeof o[a]&&e.test(o[a])?this.addReplacement({nodeName:"Workflow Data",path:r,originalValue:o[a],placeholder:o[a].replace(e,"your-email@example.com"),category:"emails"}):"object"==typeof o[a]&&null!==o[a]&&t(o[a],r)}};t(this.originalWorkflow)}
+            }
+            
+            // --- UI Update & Event Binding ---
+            function initializeResultsView() {
+                state.anonymizer = new WorkflowAnonymizer(state.originalWorkflow);
+                state.replacements = state.anonymizer.findReplacements();
+
+                uploadSection.style.display = 'none';
+                resultsSection.innerHTML = '';
+                resultsSection.appendChild(resultsTemplate.content.cloneNode(true));
+                resultsSection.style.display = 'block';
+
+                const optionsContainer = document.getElementById('anonymization-options');
+                
+                updateOptions(optionsContainer);
+                updateUI();
+                
+                optionsContainer.addEventListener('change', updateUI);
+                document.getElementById('download-json-btn').addEventListener('click', downloadJson);
+                document.getElementById('download-report-btn').addEventListener('click', downloadReport);
+                document.getElementById('copy-mapping-btn').addEventListener('click', copyMapping);
+                document.getElementById('reset-btn').addEventListener('click', resetApp);
+            }
+
+            function updateUI() {
+                updateStats();
+                updateMappingTable();
+            }
+
+            function updateStats() {
+                const statsSummary = document.getElementById('stats-summary');
+                const totalNodes = state.originalWorkflow.nodes.length;
+                const totalCredentials = state.replacements.filter(r => r.category === 'credentialIds' && r.path.endsWith('.id')).length;
+                
+                const enabledCategories = getEnabledCategories();
+                const activeReplacements = state.replacements.filter(r => enabledCategories.includes(r.category));
+
+                statsSummary.innerHTML = `
+                    <div class="stat-item"><div class="stat-value">${totalNodes}</div><div class="stat-label">Nodes</div></div>
+                    <div class="stat-item"><div class="stat-value">${totalCredentials}</div><div class="stat-label">Gefundene Credentials</div></div>
+                    <div class="stat-item"><div class="stat-value">${activeReplacements.length}</div><div class="stat-label">Aktive Ersetzungen</div></div>
+                `;
+            }
+            
+            function updateOptions(container) {
+                const counts = state.replacements.reduce((acc, rep) => {
+                    acc[rep.category] = (acc[rep.category] || 0) + 1;
+                    return acc;
+                }, {});
+
+                container.innerHTML = '';
+                Object.entries(state.categories).forEach(([key, label]) => {
+                    const count = counts[key] || 0;
+                    if (count > 0) {
+                        container.innerHTML += `
+                            <label class="option-item">
+                                <input type="checkbox" value="${key}" checked>
+                                ${label} (${count} gefunden)
+                            </label>
+                        `;
+                    }
+                });
+            }
+
+            function updateMappingTable() {
+                const mappingTableBody = document.querySelector('#mapping-table tbody');
+                const enabledCategories = getEnabledCategories();
+                const activeReplacements = state.replacements.filter(r => enabledCategories.includes(r.category));
+                
+                mappingTableBody.innerHTML = '';
+                if (activeReplacements.length === 0) {
+                    mappingTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 2rem;">Keine aktiven Ersetzungen. Wähle oben eine Kategorie aus.</td></tr>';
+                    return;
+                }
+                activeReplacements.forEach(rep => {
+                    const row = document.createElement('tr');
+                    const originalShort = rep.originalValue.substring(0, 12) + (rep.originalValue.length > 12 ? '...' : '');
+                    row.innerHTML = `
+                        <td>${escapeHtml(rep.nodeName)}</td>
+                        <td><code>${escapeHtml(rep.path)}</code></td>
+                        <td><span class="original-value">${escapeHtml(originalShort)}</span></td>
+                        <td><span class="placeholder">${escapeHtml(rep.placeholder)}</span></td>
+                    `;
+                    mappingTableBody.appendChild(row);
+                });
+            }
+
+            function getEnabledCategories() {
+                const optionsContainer = document.getElementById('anonymization-options');
+                return Array.from(optionsContainer.querySelectorAll('input:checked')).map(cb => cb.value);
+            }
+            
+            // --- Actions ---
+            function downloadJson() {
+                const anonymizedWorkflow = state.anonymizer.getAnonymizedWorkflow(getEnabledCategories());
+                const blob = new Blob([JSON.stringify(anonymizedWorkflow, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = state.originalFilename.replace('.json', '.anonymized.json');
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+            
+            function downloadReport() {
+                const report = generateMappingReport('markdown');
+                const blob = new Blob([report], { type: 'text/markdown' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = state.originalFilename.replace('.json', '.mapping.md');
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+            
+            function copyMapping() {
+                const report = generateMappingReport('text');
+                navigator.clipboard.writeText(report).then(() => {
+                    showToast('Mapping in die Zwischenablage kopiert!');
+                }, () => {
+                    showToast('Kopieren fehlgeschlagen.', 'danger');
+                });
+            }
+
+            function generateMappingReport(format = 'markdown') {
+                const activeReplacements = state.replacements.filter(r => getEnabledCategories().includes(r.category));
+                
+                if (format === 'markdown') {
+                    let report = `# Anonymisierungs-Report für: ${state.originalFilename}\n\n`;
+                    report += `| Node Name | Feld-Pfad | Original (gekürzt) | Neuer Platzhalter |\n`;
+                    report += `|---|---|---|---|\n`;
+                    activeReplacements.forEach(rep => {
+                        const originalShort = rep.originalValue.substring(0, 12) + (rep.originalValue.length > 12 ? '...' : '');
+                        report += `| ${escapeHtml(rep.nodeName)} | \`${escapeHtml(rep.path)}\` | \`${escapeHtml(originalShort)}\` | \`${escapeHtml(rep.placeholder)}\` |\n`;
+                    });
+                    return report;
+                } else {
+                     let report = `Anonymisierungs-Report für: ${state.originalFilename}\n\n`;
+                     activeReplacements.forEach(rep => {
+                        const originalShort = rep.originalValue.substring(0, 12) + (rep.originalValue.length > 12 ? '...' : '');
+                        report += `Node: ${escapeHtml(rep.nodeName)}\nPath: ${escapeHtml(rep.path)}\nOriginal: ${escapeHtml(originalShort)}\nReplaced with: ${escapeHtml(rep.placeholder)}\n---\n`;
+                    });
+                    return report;
+                }
+            }
+
+            function resetApp() {
+                state.originalWorkflow = null;
+                state.replacements = [];
+                state.anonymizer = null;
+                fileInput.value = '';
+                uploadSection.style.display = 'block';
+                resultsSection.style.display = 'none';
+                resultsSection.innerHTML = '';
+            }
+            
+            // --- Helpers ---
+            function escapeHtml(unsafe) {
+                if (typeof unsafe !== 'string') return String(unsafe);
+                return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+            }
+            
+            let toastTimeout;
+            function showToast(message, type = 'success') {
+                toast.textContent = message;
+                toast.style.backgroundColor = `var(--${type})`;
+                toast.classList.add('show');
+                clearTimeout(toastTimeout);
+                toastTimeout = setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 3000);
+            }
+        });
+    </script>
+</body>
+</html>
